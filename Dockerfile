@@ -41,7 +41,7 @@ COPY app /app/app
 # -----------------------------
 # Base dependencies stage - only production deps 
 # -----------------------------
-FROM setup as dependencies
+FROM setup AS dependencies
 
 # Copy pyproject.toml and files required by poetry
 COPY pyproject.toml poetry.lock* README.md /app/
@@ -52,7 +52,7 @@ RUN poetry install --no-interaction --no-ansi --without dev --no-root
 # -----------------------------
 # Dev dependencies stage - adds dev dependencies 
 # -----------------------------
-FROM dependencies as dev-dependencies
+FROM dependencies AS dev-dependencies
 
 RUN poetry install --no-interaction --no-ansi --no-root
 
@@ -67,7 +67,6 @@ RUN poetry install --no-interaction --no-ansi
 
 # Copy the rest of the application
 COPY app /app/app
-COPY models/ /app/models
 
 # Default command for development
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
@@ -114,20 +113,17 @@ RUN mkdir -p /app/models
 COPY app /app/app
 COPY scripts /app/scripts
 
-# Copy the entrypoint script
-COPY docker-entrypoint.sh /app/
-RUN chmod +x /app/docker-entrypoint.sh
+# Make entrypoint script executable
+RUN chmod +x /app/scripts/entrypoint.sh
 
-# Set environment variables for production
-ENV MODEL_PATH="/app/models" \
-    S3_BUCKET_NAME="whos-my-good-boy-models" \
-    MODEL_LOADING_STRATEGY="s3"
+# Install AWS CLI for S3 access
+RUN pip install boto3
 
 # Expose the port
 EXPOSE 8000
 
-# Use entrypoint script to handle model loading and startup
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+# Set the entrypoint to download models before starting the app
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
 
-# Default command
+# Default command (passed to entrypoint script)
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
