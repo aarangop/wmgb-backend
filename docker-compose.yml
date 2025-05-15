@@ -1,0 +1,12 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .docker.env
+    volumes:
+      # Optional: Mount the models directory if you want to use local models
+      - ./models:/app/models

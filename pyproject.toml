@@ -1,0 +1,59 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "whos-my-good-boy"
+version = "0.1.0"
+description = "A FastAPI application for image classification using fine-tuned TensorFlow models."
+authors = ["Andrés Arango Pérez <andresap@proton.me>"]
+readme = "README.md"
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+fastapi = ">=0.115.12"
+uvicorn = {extras = ["standard"], version = ">=0.34.2"}
+pydantic = ">=2.11.4"
+loguru = ">=0.7.3"
+tensorflow = ">=2.19.0"
+pillow = ">=11.2.1"
+boto3 = ">=1.38.14"
+python-multipart = ">=0.0.20"
+pydantic-settings = ">=2.9.1"
+httpx = "^0.28.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.3.5"
+pytest-cov = ">=6.1.1"
+black = ">=25.1.0"
+isort = ">=6.0.1"
+mypy = ">=1.15.0"
+moto = ">=5.1.4"
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests that integrate with external services like AWS",
+]
+testpaths = ["tests"]
+python_files = "test_*.py"
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.10"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+strict_optional = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_ignores = true
