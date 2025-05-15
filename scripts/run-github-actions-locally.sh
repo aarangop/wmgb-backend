@@ -23,8 +23,10 @@ echo "Running GitHub Actions locally using act and environment variables from .c
 
 # Run act with the .ci.env file
 # The --env-file flag tells act to load environment variables from .ci.env
-act --env-file .ci.env "$@"
+# The --secret-file flag is used to load sensitive environment variables from .ci.env for secrets
+act --env-file .ci.env --secret-file .ci.env "$@"
 
 # Note: You can specify which job to run by adding it as an argument:
+# Example: ./scripts/run-github-actions-locally.sh -j build-deps
 # Example: ./scripts/run-github-actions-locally.sh -j unit-tests
 # Example: ./scripts/run-github-actions-locally.sh -j integration-tests

@@ -1,12 +1,30 @@
 services:
-  app:
+  dev:
     build:
       context: .
-      dockerfile: Dockerfile
+      target: development
     ports:
       - "8000:8000"
     env_file:
       - .docker.env
     volumes:
-      # Optional: Mount the models directory if you want to use local models
-      - ./models:/app/models
+      - .:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+  unit-tests:
+    build:
+      context: .
+      target: unit-test
+    env_file:
+      - .docker.env
+    volumes:
+      - .:/app
+    command: python -m pytest -k "not integration" -v
+  integration-tests:
+    build:
+      context: .
+      target: integration-test
+    env_file:
+      - .docker.env
+    volumes:
+      - .:/app
+    command: python -m pytest -m integration -v

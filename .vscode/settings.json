@@ -3,7 +3,7 @@
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
   "github.copilot.enable": {
-    "*": true,
+    "*": false,
     "plaintext": false,
     "markdown": true,
     "scminput": false

@@ -4,8 +4,7 @@ A FastAPI-based backend service for classifying images using various AI models.
 
 ## Features
 
-- General image classification endpoint
-- Dog breed detection endpoint
+- Cat-Dog-Other classification
 - "Apolo" (specific dog) detection endpoint
 - Clean API with proper error handling
 - Comprehensive test suite
@@ -43,7 +42,7 @@ backend/
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.10
 - pip
 
 ### Installation
@@ -93,8 +92,8 @@ pytest
 You can build and run the application using Docker:
 
 ```
-docker build -t whos-my-good-boy-api .
-docker run -p 8000:8000 whos-my-good-boy-api
+docker build -t wmgb-backend .
+docker run -p 8000:8000 wmgb-backend
 ```
 
 ## CI/CD with GitHub Actions
