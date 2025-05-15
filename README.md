@@ -1,99 +1,143 @@
 # Who's My Good Boy - AI Image Classification Service
 
-A FastAPI-based backend service for classifying images using various AI models.
+A FastAPI-based backend service for classifying images using TensorFlow models,
+primarily focused on animal classification.
 
 ## Features
 
-- Cat-Dog-Other classification
+- Cat-Dog-Other classification with fine-tuned TensorFlow models
 - "Apolo" (specific dog) detection endpoint
 - Clean API with proper error handling
-- Comprehensive test suite
-
-## Project Structure
-
-```
-backend/
-├── app/
-│   ├── api/
-│   │   ├── routes/
-│   │   │   ├── health.py      # Health check endpoint
-│   │   │   └── predictions.py # Classification endpoints
-│   │   └── dependencies.py    # Dependency injection
-│   ├── core/
-│   │   ├── config.py          # App configuration
-│   │   └── errors.py          # Error handling
-│   ├── models/
-│   │   └── schemas.py         # Pydantic models
-│   ├── services/
-│   │   ├── base.py            # Base classifier service
-│   │   ├── general_classifier.py # General image classifier
-│   │   ├── dog_classifier.py     # Dog detection
-│   │   └── apolo_classifier.py   # Apolo detection
-│   └── main.py                # FastAPI app
-├── tests/
-│   ├── api/
-│   │   ├── test_health.py
-│   │   └── test_predictions.py
-│   └── test_data/             # Test images
-└── requirements.txt           # Dependencies
-```
+- Comprehensive test suite (unit and integration tests)
+- Poetry for dependency management
+- Multi-stage Docker build for development, testing, and production
+- AWS S3 integration for model storage
+- CI/CD with GitHub Actions
 
 ## Setup
 
 ### Prerequisites
 
-- Python 3.10
-- pip
+- Python 3.10 or later (but less than 3.12)
+- [Poetry](https://python-poetry.org/) for dependency management
+- Docker and Docker Compose (optional, for containerized development)
 
 ### Installation
 
 1. Clone the repository:
 
-   ```
+   ```bash
    git clone <repository-url>
-   cd whos-my-good-boy/backend
+   cd wmgb-backend
    ```
 
-2. Create a virtual environment:
+2. Install dependencies using Poetry:
 
-   ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. Install dependencies:
-   ```
-   pip install -r requirements.txt
+   ```bash
+   poetry install
    ```
 
-### Running the application
+3. Activate the Poetry virtual environment:
+   ```bash
+   poetry shell
+   ```
 
+### Environment Configuration
+
+1. Copy the example environment file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit the `.env` file with your configuration
+   - For Docker development, also create a `.docker.env` file
+
+### Running the Application
+
+#### Using Poetry
+
+```bash
+poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
-uvicorn app.main:app --reload
+
+#### Using Docker Compose
+
+```bash
+docker-compose up dev
 ```
 
 The API will be available at http://localhost:8000
 
-### Running tests
+#### API Documentation
 
+Once the application is running, you can access:
+
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+### Running Tests
+
+#### Using Poetry
+
+```bash
+# Run all tests
+poetry run pytest
+
+# Run unit tests only
+poetry run pytest -k "not integration"
+
+# Run integration tests only
+poetry run pytest -m integration
+
+# Run tests with coverage
+poetry run pytest --cov=app --cov-report=term --cov-report=html
 ```
-pytest
+
+#### Using VS Code Tasks
+
+The project includes predefined VS Code tasks:
+
+- Run Unit Tests
+- Run Integration Tests
+- Run All Tests
+- Run Tests with Coverage
+
+#### Using Docker Compose
+
+```bash
+# Run unit tests
+docker-compose run unit-tests
+
+# Run integration tests
+docker-compose run integration-tests
 ```
 
 ## API Endpoints
 
 - `GET /health` - Health check endpoint
-- `POST /api/v1/classify` - General image classification
-- `POST /api/v1/is-dog` - Dog detection
-- `POST /api/v1/is-apolo` - Apolo detection
+- `POST /api/v1/{version}/classify` - General image classification
+- `POST /api/v1/{version}/is-apolo` - Apolo-specific dog detection
 
 ## Docker
 
-You can build and run the application using Docker:
+The project uses a multi-stage Dockerfile for different environments:
 
-```
-docker build -t wmgb-backend .
-docker run -p 8000:8000 wmgb-backend
+- **Development**: Includes all dependencies and hot-reload
+- **Test**: Configured for running tests
+- **Unit Test**: Runs only unit tests
+- **Integration Test**: Runs only integration tests
+- **Production**: Minimal dependencies for production deployment
+
+### Building and Running with Docker
+
+```bash
+# Build and run the development environment
+docker-compose up dev
+
+# Build and run the production environment
+docker build -t wmgb-backend --target production .
+docker run -p 8000:8000 -e PORT=8000 wmgb-backend
 ```
 
 ## CI/CD with GitHub Actions
@@ -128,9 +172,6 @@ You can test GitHub Actions locally using [act](https://github.com/nektos/act):
 ./scripts/run-github-actions-locally.sh
 ```
 
-This will run the GitHub Actions workflow locally using the environment
-variables from `.ci.env`.
-
 To run specific jobs:
 
 ```bash
@@ -140,6 +181,20 @@ To run specific jobs:
 # Run only integration tests
 ./scripts/run-github-actions-locally.sh -j integration-tests
 ```
+
+### Utility Scripts
+
+The project includes several utility scripts in the `scripts/` directory:
+
+- `check-s3.sh` - Verify S3 connection and bucket access
+- `debug-docker.sh` - Debug Docker container issues
+- `docker-compose-test.sh` - Run tests in Docker Compose
+- `fast-test.sh` - Run a quick test suite
+- `rebuild.sh` - Rebuild Docker containers
+- `run-docker.sh` - Run the Docker container
+- `run-github-actions-locally.sh` - Test GitHub Actions locally
+- `setup-github-actions.sh` - Set up GitHub Actions
+- `update-and-build.sh` - Update dependencies and build
 
 ### Environment Variables for Development
 
