@@ -1,5 +1,4 @@
 import os
-import boto3
 from loguru import logger
 import tensorflow as tf
 from abc import ABC, abstractmethod
@@ -37,19 +36,19 @@ class LocalModelLoader(ModelLoader):
             f"Instantiating local model loader with models directory '{self.models_dir}'"
         )
 
-    def load(self, model_filename: str):
+    def load(self, model_name: str):
         """Load the model from a local path."""
-        logger.info(f"Loading model '{model_filename}' from {self.models_dir}")
-        if model_filename in self.models:
-            return self.models[model_filename]
-
+        logger.info(f"Loading model '{model_name}' from {self.models_dir}")
+        if model_name in self.models:
+            return self.models[model_name]
+        model_filename = f"{model_name}.h5"
         model_path = os.path.join(self.models_dir, model_filename)
 
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"No model file '{model_path}'")
 
         model = tf.keras.models.load_model(model_path)
-        self.models[model_filename] = model
+        self.models[model_name] = model
 
         return model
 
@@ -141,7 +140,7 @@ class S3ModelLoader(ModelLoader):
 
         return model[1]
 
-    def load(self, model_name, version='latest', local_cache_dir=None):
+    def load(self, model_name: str, version: str = 'latest', local_cache_dir: str = None):
         """
         Load model from S3 bucket
         """
@@ -149,7 +148,8 @@ class S3ModelLoader(ModelLoader):
             f"Loading model '{model_name}' from S3 bucket '{self._bucket}'")
 
         if model_name in self.models:
-            logger.debug(f"Model '{model_name}' already loaded in memory, returning cached version")
+            logger.debug(
+                f"Model '{model_name}' already loaded in memory, returning cached version")
             return self.models[model_name]
 
         # Check environment variable for model source
@@ -170,8 +170,9 @@ class S3ModelLoader(ModelLoader):
             raise
 
         if 'Contents' not in objects:
-            logger.error(f"No objects found with prefix '{prefix}' in bucket '{self._bucket}'")
-            
+            logger.error(
+                f"No objects found with prefix '{prefix}' in bucket '{self._bucket}'")
+
             # Try listing the bucket contents without prefix to see what's available
             try:
                 all_objects = self._client.list_objects_v2(Bucket=self._bucket)
@@ -180,11 +181,12 @@ class S3ModelLoader(ModelLoader):
                     logger.debug(f"Available objects in bucket: {keys}")
             except Exception as e:
                 logger.error(f"Error listing all objects in bucket: {e}")
-                
+
             raise FileNotFoundError(
                 f"Model '{model_name}' not found in S3 bucket '{self._bucket}'")
-            
-        logger.debug(f"Found {len(objects['Contents'])} objects with prefix '{prefix}'")
+
+        logger.debug(
+            f"Found {len(objects['Contents'])} objects with prefix '{prefix}'")
 
         if version == 'latest':
             model_path = self._get_latest_model_version_path(

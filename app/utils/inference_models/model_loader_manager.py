@@ -1,5 +1,3 @@
-import os
-
 from loguru import logger
 from app.core.config import config
 from app.utils.inference_models.model_loader import LocalModelLoader, S3ModelLoader

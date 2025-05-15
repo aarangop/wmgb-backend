@@ -1,10 +1,8 @@
 import unittest
-from unittest.mock import patch, MagicMock, PropertyMock
-import io
+from unittest.mock import patch, MagicMock
 import os
 
 from app.services.general_classifier import GeneralClassifierService
-from app.core.errors import ModelNotLoadedError
 
 
 class TestGeneralClassifierService(unittest.TestCase):
@@ -18,12 +16,18 @@ class TestGeneralClassifierService(unittest.TestCase):
         with open(test_image_path, 'rb') as f:
             self.sample_image_data = f.read()
 
-    @patch('os.getenv')
+    @patch('app.services.general_classifier.config')
+    @patch('app.utils.inference_models.model_loader_manager.config')
     @patch('app.utils.inference_models.model_loader_manager.ModelLoaderManager.get_loader')
-    def test_initialization(self, mock_get_loader, mock_getenv):
+    def test_initialization(
+            self,
+            mock_get_loader: MagicMock,
+            mock_config_model_loader_manager: MagicMock,
+            mock_config_general_classifier: MagicMock):
         """Test that the service initializes correctly"""
         # Configure mocks
-        mock_getenv.return_value = "test_model.h5"
+        mock_config_model_loader_manager.MODEL_SOURCE = "local"
+        mock_config_general_classifier.CAT_DOG_OTHER_CLASSIFIER = "test_model.h5"
         mock_loader = MagicMock()
         mock_model = MagicMock()
         mock_get_loader.return_value = mock_loader
@@ -39,7 +43,7 @@ class TestGeneralClassifierService(unittest.TestCase):
 
     @patch('os.getenv')
     @patch('app.utils.inference_models.model_loader_manager.ModelLoaderManager.get_loader')
-    def test_predict_success(self, mock_get_loader, mock_getenv):
+    def test_predict_success(self, mock_get_loader: MagicMock, mock_getenv: MagicMock):
         """Test successful prediction"""
         # Configure mocks
         mock_getenv.return_value = "test_model.h5"

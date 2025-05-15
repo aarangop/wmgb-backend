@@ -3,7 +3,7 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "whos-my-good-boy"
+name = "whos-my-good-boy-backend"
 version = "0.1.0"
 description = "A FastAPI application for image classification using fine-tuned TensorFlow models."
 authors = ["Andrés Arango Pérez <andresap@proton.me>"]

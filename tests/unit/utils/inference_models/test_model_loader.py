@@ -35,8 +35,9 @@ class TestLocalModelLoader:
         """Test loading a model that exists on disk"""
         # Arrange
         models_dir = tmp_path
-        model_filename = "test_model"
-        model_path = os.path.join(models_dir, model_filename)
+        model_name = "test_model"
+        model_filename = f"{model_name}.h5"
+        model_path = os.path.join(models_dir, model_name)
 
         loader = LocalModelLoader(models_dir=str(models_dir))
 
@@ -51,32 +52,34 @@ class TestLocalModelLoader:
 
             # Mock os.path.join to monitor how it's called
             with patch('os.path.join', return_value=model_path) as mock_join:
-                result = loader.load(model_filename)
+                result = loader.load(model_name)
 
                 # Assert
                 mock_join.assert_called_once_with(
                     str(models_dir), model_filename)
                 mock_load_model.assert_called_once()
                 assert result == mock_model
-                assert model_filename in loader.models
+                assert model_name in loader.models
 
     def test_load_non_existing_model(self, tmp_path):
         """Test loading a model that doesn't exist raises FileNotFoundError"""
         # Arrange
         models_dir = tmp_path
-        model_filename = "non_existing_model"
+        model_name = "non_existing_model"
+        model_filename = f"{model_name}.h5"
 
         loader = LocalModelLoader(models_dir=str(models_dir))
 
         # Act & Assert
         with pytest.raises(FileNotFoundError, match=f"No model file '{os.path.join(str(models_dir), model_filename)}'"):
-            loader.load(model_filename)
+            loader.load(model_name)
 
     def test_load_cached_model(self, tmp_path):
         """Test that a previously loaded model is returned from cache without reloading"""
         # Arrange
         models_dir = tmp_path
-        model_filename = "test_model"
+        model_name = "test_model"
+        model_filename = f"{model_name}.h5"
         model_path = os.path.join(models_dir, model_filename)
 
         # Create a mock file
@@ -91,21 +94,22 @@ class TestLocalModelLoader:
             mock_load_model.return_value = mock_model
 
             # First load
-            first_result = loader.load(model_filename)
+            first_result = loader.load(model_name)
 
             # Second load - should use cache
-            second_result = loader.load(model_filename)
+            second_result = loader.load(model_name)
 
             # Assert
             assert mock_load_model.call_count == 1  # Should only be called once
             assert first_result == second_result
-            assert loader.models[model_filename] == mock_model
+            assert loader.models[model_name] == mock_model
 
     def test_is_model_available(self, tmp_path):
         """Test is_model_available returns correct boolean based on model status"""
         # Arrange
         models_dir = tmp_path
-        model_filename = "test_model"
+        model_name = "test_model"
+        model_filename = f"{model_name}.h5"
         model_path = os.path.join(models_dir, model_filename)
 
         # Create a mock file
@@ -121,7 +125,7 @@ class TestLocalModelLoader:
         with patch('tensorflow.keras.models.load_model') as mock_load_model:
             mock_model = MagicMock(spec=tf.keras.models.Model)
             mock_load_model.return_value = mock_model
-            loader.load(model_filename)
+            loader.load(model_name)
 
         # Act - Check after loading a model
         result_after = loader.is_model_available()
