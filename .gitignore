@@ -1,6 +1,5 @@
 # Models folder for downloaded models
 models/
-scripts/
 
 # Docker environment file
 *.env

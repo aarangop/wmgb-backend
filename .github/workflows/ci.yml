@@ -9,7 +9,7 @@ on:
 # Define environment variables at the top level
 env:
   # Configuration variables - used both at build time and runtime
-  MODELS_DIR: ${{ vars.MODELS_DIR || '/app/models/s3' }}
+  MODELS_DIR: ${{ vars.MODELS_DIR || '/app/models' }}
   CAT_DOG_OTHER_CLASSIFIER:
     ${{ vars.CAT_DOG_OTHER_CLASSIFIER || 'cat-dog-other-classifier' }}
   MODEL_SOURCE: ${{ vars.MODEL_SOURCE || 's3' }}
@@ -32,19 +32,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Create .env file for Docker to use
-      - name: Create Docker environment file
-        run: |
-          # Create the Docker env file
-          echo "MODELS_DIR=${{ env.MODELS_DIR }}" > .env-docker
-          echo "CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
-          echo "MODEL_SOURCE=${{ env.MODEL_SOURCE }}" >> .env-docker
-          echo "S3_MODELS_BUCKET=${{ env.S3_MODELS_BUCKET }}" >> .env-docker
-          echo "AWS_REGION=${{ env.AWS_REGION }}" >> .env-docker
-          echo "API_VERSION=${{ env.API_VERSION }}" >> .env-docker
-          echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" >> .env-docker
-          echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" >> .env-docker
-
       - name: Build and cache dependencies
         uses: docker/build-push-action@v5
         with:
@@ -54,15 +41,6 @@ jobs:
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            MODELS_DIR=${{ env.MODELS_DIR }}
-            CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}
-            MODEL_SOURCE=${{ env.MODEL_SOURCE }}
-            S3_MODELS_BUCKET=${{ env.S3_MODELS_BUCKET }}
-            AWS_REGION=${{ env.AWS_REGION }}
-            API_VERSION=${{ env.API_VERSION }}
-            AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}
 
   # Run unit tests
   unit-tests:
@@ -81,12 +59,7 @@ jobs:
           # Create the Docker env file
           echo "MODELS_DIR=${{ env.MODELS_DIR }}" > .env-docker
           echo "CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
-          echo "MODEL_SOURCE=${{ env.MODEL_SOURCE }}" >> .env-docker
-          echo "S3_MODELS_BUCKET=${{ env.S3_MODELS_BUCKET }}" >> .env-docker
-          echo "AWS_REGION=${{ env.AWS_REGION }}" >> .env-docker
-          echo "API_VERSION=${{ env.API_VERSION }}" >> .env-docker
-          echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" >> .env-docker
-          echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" >> .env-docker
+          echo "MODEL_SOURCE=local" >> .env-docker
 
       - name: Build and run unit tests
         uses: docker/build-push-action@v5
@@ -97,15 +70,6 @@ jobs:
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            MODELS_DIR=${{ env.MODELS_DIR }}
-            CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}
-            MODEL_SOURCE=${{ env.MODEL_SOURCE }}
-            S3_MODELS_BUCKET=${{ env.S3_MODELS_BUCKET }}
-            AWS_REGION=${{ env.AWS_REGION }}
-            API_VERSION=${{ env.API_VERSION }}
-            AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}
 
       - name: Run unit tests
         run: |
@@ -145,15 +109,6 @@ jobs:
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            MODELS_DIR=${{ env.MODELS_DIR }}
-            CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}
-            MODEL_SOURCE=${{ env.MODEL_SOURCE }}
-            S3_MODELS_BUCKET=${{ env.S3_MODELS_BUCKET }}
-            AWS_REGION=${{ env.AWS_REGION }}
-            API_VERSION=${{ env.API_VERSION }}
-            AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}
 
       - name: Run integration tests
         run: |
