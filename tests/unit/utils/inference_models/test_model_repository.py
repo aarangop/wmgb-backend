@@ -523,7 +523,7 @@ class TestCachingModelRepository:
         mock_local = MagicMock(spec=LocalCacheRepository)
         mock_remote = MagicMock(spec=S3Repository)
 
-        mock_model = MagicMock(spec=tf.keras.Model)
+        mock_model = MagicMock(spec=tf.keras.Model)  # type: ignore
         mock_local.get_model.return_value = mock_model
 
         repo = CachingModelRepository(
@@ -548,7 +548,7 @@ class TestCachingModelRepository:
         mock_local = MagicMock(spec=LocalCacheRepository)
         mock_remote = MagicMock(spec=S3Repository)
 
-        mock_model = MagicMock(spec=tf.keras.Model)
+        mock_model = MagicMock(spec=tf.keras.Model)  # type: ignore
         mock_local.get_model.side_effect = FileNotFoundError("Not in local")
         mock_remote.get_model.return_value = mock_model
 
@@ -575,7 +575,7 @@ class TestCachingModelRepository:
         mock_local = MagicMock(spec=LocalCacheRepository)
         mock_remote = MagicMock(spec=S3Repository)
 
-        mock_model = MagicMock(spec=tf.keras.Model)
+        mock_model = MagicMock(spec=tf.keras.Model)  # type: ignore
         mock_local.get_model.side_effect = FileNotFoundError("Not in local")
         mock_remote.get_model.return_value = mock_model
         mock_local.save_model.side_effect = Exception("Failed to save")
@@ -603,7 +603,7 @@ class TestCachingModelRepository:
         mock_local = MagicMock(spec=LocalCacheRepository)
         mock_remote = MagicMock(spec=S3Repository)
 
-        mock_model = MagicMock(spec=tf.keras.Model)
+        mock_model = MagicMock(spec=tf.keras.Model)  # type: ignore
         mock_local.get_model.return_value = mock_model
 
         repo = CachingModelRepository(

@@ -10,6 +10,8 @@ from app.core.errors import ModelNotLoadedError
 from app.utils.inference_models.mobilenet_preprocessor import MobileNetProcessor
 from app.utils.inference_models.model_loader_manager import ModelLoaderManager
 from app.core.config import config
+from app.utils.inference_models.model_repository import CachingModelRepository, LocalCacheRepository
+
 
 class GeneralClassifierService(BaseClassifierService):
     """Service for general image classification"""
@@ -17,10 +19,10 @@ class GeneralClassifierService(BaseClassifierService):
     def __init__(self):
         super().__init__()
 
-        self.model_filename = config.CAT_DOG_OTHER_CLASSIFIER
-        logger.info(f"Loading model: {self.model_filename}")
-        self.model_loader = ModelLoaderManager.get_loader()
-        self.model = self.model_loader.load(self.model_filename)
+        self.model_name = config.CAT_DOG_OTHER_CLASSIFIER
+        logger.info(f"Loading model: {self.model_name}")
+        self.model_repo = CachingModelRepository()
+        self.model = self.model_repo.get_model(self.model_name)
         self.model_processor = MobileNetProcessor()
         self.pred_classes = ['cat', 'dog', 'other']
 
