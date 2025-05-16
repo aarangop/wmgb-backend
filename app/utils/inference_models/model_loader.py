@@ -10,7 +10,7 @@ import re
 class ModelLoader(ABC):
 
     @abstractmethod
-    def load(self, model_filename: str):
+    def load(self, model_name: str):
         """Load the model from a specified path or source."""
         pass
 
@@ -47,7 +47,7 @@ class LocalModelLoader(ModelLoader):
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"No model file '{model_path}'")
 
-        model = tf.keras.models.load_model(model_path)
+        model = tf.keras.models.load_model(model_path)  # type: ignore
         self.models[model_name] = model
 
         return model
