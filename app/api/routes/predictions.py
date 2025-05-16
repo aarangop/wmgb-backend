@@ -1,4 +1,5 @@
 import time
+from typing import Dict, List
 from fastapi import APIRouter, Depends, File, UploadFile
 from loguru import logger
 from pydantic import ValidationError
@@ -38,7 +39,7 @@ async def classify_image(
         top_prediction = max(predictions.items(), key=lambda x: x[1])[0]
 
         # Format predictions for response
-        formatted_predictions = [
+        formatted_predictions: List = [
             {"class_name": k, "probability": float(v)} for k, v in predictions.items()]
 
         processing_time = time.time() - start_time

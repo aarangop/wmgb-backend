@@ -1,5 +1,5 @@
 # Models folder for downloaded models
-models/
+/ml_models/
 
 # Docker environment file
 *.env

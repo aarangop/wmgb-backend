@@ -31,9 +31,10 @@ class Config(BaseSettings):
     JSON_LOGS: bool = parse_bool_env(os.getenv("JSON_LOGS", "false"))
 
     # Model Configuration
-    USE_LOCAL_MODEL_REPO: bool = parse_bool_env(os.getenv("USE_LOCAL_MODEL_REPO", "false"))
+    USE_LOCAL_MODEL_REPO: bool = parse_bool_env(
+        os.getenv("USE_LOCAL_MODEL_REPO", "false"))
     MODEL_REPOSITORY_TYPE: str = os.getenv("MODEL_REPOSITORY_TYPE", "caching")
-    
+
     MODELS_DIR: str = os.getenv("MODELS_DIR", "./models")
     TEST_MODELS_DIR: str = os.getenv("TEST_MODELS_DIR", "./models/test")
     CAT_DOG_OTHER_CLASSIFIER: str = os.getenv(

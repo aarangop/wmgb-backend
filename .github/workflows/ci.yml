@@ -92,7 +92,6 @@ jobs:
           echo "CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
           echo "USE_LOCAL_MODEL_REPO=true" >> .env-docker
           echo "TESTING=true" >> .env-docker
-          echo "MODEL_REPOSITORY_TYPE=local" >> .env-docker
 
       - name: Build and run unit tests
         uses: docker/build-push-action@v5
@@ -121,7 +120,7 @@ jobs:
           # Print Python version and environment variables
           docker run --rm --env-file .env-docker wmgb-backend:unit-test python -c "import os, sys; print(f'Python {sys.version}'); print('ENV:', dict(os.environ))"
           # Run the unit tests using docker with environment variables from .env-docker
-          docker run --rm --env-file .env-docker wmgb-backend:unit-test -e USE_LOCAL_MODEL_REPO=1
+          docker run --rm --env-file .env-docker wmgb-backend:unit-test
 
   # Run integration tests
   integration-tests:

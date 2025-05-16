@@ -36,8 +36,10 @@ class TestGeneralClassifierService(unittest.TestCase):
 
         # Verify initialization
         self.assertEqual(service.model_name, "test_model")
-        self.assertEqual(service.model, mock_model)
-        mock_repo.get_model.assert_called_once_with("test_model")
+        # Verify that the model is not loaded initially,
+        # This prevents the test client from loading the model when it's not
+        # available in testing environments
+        self.assertIsNone(service.model)
 
     @patch('app.services.general_classifier.config')
     def test_predict_success(self, mock_config: MagicMock):

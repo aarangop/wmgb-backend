@@ -20,7 +20,7 @@ class GeneralClassifierService(BaseClassifierService):
 
         self.model_name = config.CAT_DOG_OTHER_CLASSIFIER
         self.model_repo = model_repository
-        self.model = self.model_repo.get_model(self.model_name)
+        self.model = None  # Load model lazily
         self.model_processor = MobileNetProcessor()
         self.pred_classes = ['cat', 'dog', 'other']
 
@@ -39,7 +39,13 @@ class GeneralClassifierService(BaseClassifierService):
             InvalidImageError: If the image cannot be processed
         """
         if self.model is None:
-            raise ModelNotLoadedError("General classifier model not loaded")
+            # Attempt to load the model
+            try:
+                self.model = self.model_repo.get_model(self.model_name)
+            except Exception as e:
+                logger.error(f"Failed to load model: {e}")
+                raise ModelNotLoadedError(
+                    "General classifier model not loaded")
 
         # Preprocess the image
         preprocessed_image = self.model_processor.preprocess_input(image_data)
