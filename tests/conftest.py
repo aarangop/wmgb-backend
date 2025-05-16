@@ -4,13 +4,6 @@ from loguru import logger
 from fastapi.testclient import TestClient
 from app.main import app
 
-# Import for ModelLoaderManager reset
-try:
-    from app.utils.inference_models.model_loader_manager import ModelLoaderManager
-except ImportError:
-    # For tests that don't need ModelLoaderManager
-    ModelLoaderManager = None
-
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_logger():
@@ -50,20 +43,3 @@ def client():
     """
     with TestClient(app) as client:
         yield client
-
-
-@pytest.fixture(autouse=True)
-def reset_model_loader_manager():
-    """
-    Reset the ModelLoaderManager singleton before each test that imports it.
-    This helps prevent test pollution from one test to another.
-    """
-    if ModelLoaderManager is not None:
-        # Reset the singleton instance
-        ModelLoaderManager._loader = None
-
-    yield
-
-    # Also reset after test
-    if ModelLoaderManager is not None:
-        ModelLoaderManager._loader = None

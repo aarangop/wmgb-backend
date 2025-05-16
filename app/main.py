@@ -12,7 +12,7 @@ from app.core.logging import setup_logging
 logger.info("Starting FastAPI application...")
 logger.info(f"Environment: {config.ENV}")
 logger.info(f"API Version: {config.API_VERSION}")
-logger.info(f"Model Source: {config.MODEL_SOURCE}")
+logger.info(f"Model Source: {config.USE_LOCAL_MODEL_REPO}")
 logger.info(f"Models Directory: {config.MODELS_DIR}")
 logger.info(f"Cat-dog-other classifier: {config.CAT_DOG_OTHER_CLASSIFIER}")
 logger.info(f"Log Level: {config.LOG_LEVEL}")

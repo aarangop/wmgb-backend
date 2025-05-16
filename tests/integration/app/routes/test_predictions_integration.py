@@ -18,7 +18,7 @@ TEST_IMAGE_PATH = os.path.join(
 api_prefix = config.API_PREFIX
 
 # Ensure the model source is set to S3 for integration tests
-config.MODEL_SOURCE = "s3"
+config.USE_LOCAL_MODEL_REPO = "s3"
 
 
 @pytest.mark.integration

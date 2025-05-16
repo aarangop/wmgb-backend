@@ -4,12 +4,13 @@ import random
 from app.services.base import BaseClassifierService
 from app.core.errors import ModelNotLoadedError
 from app.utils.inference_models.mobilenet_preprocessor import MobileNetProcessor
+from app.utils.inference_models.model_repository import ModelRepository
 
 
 class ApoloClassifierService(BaseClassifierService):
     """Service for Apolo (specific dog) detection in images"""
 
-    def __init__(self):
+    def __init__(self, model_repository: ModelRepository):
         super().__init__()
         self.load_model()
 

@@ -8,20 +8,18 @@ from loguru import logger
 from app.services.base import BaseClassifierService
 from app.core.errors import ModelNotLoadedError
 from app.utils.inference_models.mobilenet_preprocessor import MobileNetProcessor
-from app.utils.inference_models.model_loader_manager import ModelLoaderManager
 from app.core.config import config
-from app.utils.inference_models.model_repository import CachingModelRepository, LocalCacheRepository
+from app.utils.inference_models.model_repository import ModelRepository
 
 
 class GeneralClassifierService(BaseClassifierService):
     """Service for general image classification"""
 
-    def __init__(self):
+    def __init__(self, model_repository: ModelRepository):
         super().__init__()
 
         self.model_name = config.CAT_DOG_OTHER_CLASSIFIER
-        logger.info(f"Loading model: {self.model_name}")
-        self.model_repo = CachingModelRepository()
+        self.model_repo = model_repository
         self.model = self.model_repo.get_model(self.model_name)
         self.model_processor = MobileNetProcessor()
         self.pred_classes = ['cat', 'dog', 'other']
