@@ -32,6 +32,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Cache Docker layers between jobs
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Build and cache dependencies
         uses: docker/build-push-action@v5
         with:
@@ -39,8 +48,20 @@ jobs:
           target: dev-dependencies
           tags: wmgb-backend:deps
           load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=local,src=/tmp/.buildx-cache
+            type=gha
+          cache-to: |
+            type=local,dest=/tmp/.buildx-cache-new,mode=max
+            type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      # This step is necessary to prevent cache from growing indefinitely
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
   # Run unit tests
   unit-tests:
@@ -53,10 +74,19 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Restore Docker layer cache
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       # Create .env file for Docker to use
       - name: Create Docker environment file
         run: |
-          # Create the Docker env file
+          # Create the Docker env file with only required vars for unit tests
           echo "MODELS_DIR=${{ env.MODELS_DIR }}" > .env-docker
           echo "CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
           echo "MODEL_SOURCE=local" >> .env-docker
@@ -68,11 +98,25 @@ jobs:
           target: unit-test
           tags: wmgb-backend:unit-test
           load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=local,src=/tmp/.buildx-cache
+            type=gha
+          cache-to: |
+            type=local,dest=/tmp/.buildx-cache-new,mode=max
+            type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            SKIP_POETRY_INSTALL_FOR_LIGHTER_TESTS=true
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
       - name: Run unit tests
         run: |
+          # Print Python version and environment variables
+          docker run --rm --env-file .env-docker wmgb-backend:unit-test python -c "import os, sys; print(f'Python {sys.version}'); print('ENV:', dict(os.environ))"
           # Run the unit tests using docker with environment variables from .env-docker
           docker run --rm --env-file .env-docker wmgb-backend:unit-test
 

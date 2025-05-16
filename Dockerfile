@@ -10,9 +10,42 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_IN_PROJECT=0 \
-    POETRY_NO_INTERACTION=1
+    POETRY_NO_INTERACTION=1 \
+    POETRY_CACHE_DIR=/tmp/poetry_cache
+
+# Set working directory
+WORKDIR /app
+
+
+# Install only essential system dependencies first to improve layer caching
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry and configure it - separate layer for better caching
+RUN curl -sSL https://install.python-poetry.org | python3 - 
+ENV PATH="${POETRY_HOME}/bin:${PATH}"
+
+RUN poetry --version \
+    && poetry config virtualenvs.create false \ 
+    && poetry config installer.parallel true \
+    && poetry config installer.max-workers 10
+
+
+# Copy only the dependency files first to leverage Docker cache
+COPY pyproject.toml poetry.lock* README.md /app/
+
+# Create directory for models
+RUN mkdir -p /app/models/local \
+    && mkdir -p /app/models/s3
+
+# -----------------------------
+# Base dependencies stage - only production deps 
+# -----------------------------
+FROM setup AS dependencies
 
 # Install system dependencies required for TensorFlow and OpenCV
+# Only install these in stages that need them
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
@@ -21,32 +54,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxext6 \
     libxrender-dev \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 -
-ENV PATH="${POETRY_HOME}/bin:${PATH}"
-
-# Configure poetry
-RUN poetry config virtualenvs.create false
-RUN poetry config installer.parallel true
-RUN poetry config installer.max-workers 10
-
-# Set working directory
-WORKDIR /app
-
-COPY app /app/app
-
-# -----------------------------
-# Base dependencies stage - only production deps 
-# -----------------------------
-FROM setup AS dependencies
-
-# Copy pyproject.toml and files required by poetry
-COPY pyproject.toml poetry.lock* README.md /app/
-
-RUN poetry config virtualenvs.create false
+# Install production dependencies
 RUN poetry install --no-interaction --no-ansi --without dev --no-root
 
 # -----------------------------
@@ -54,47 +64,47 @@ RUN poetry install --no-interaction --no-ansi --without dev --no-root
 # -----------------------------
 FROM dependencies AS dev-dependencies
 
-RUN poetry install --no-interaction --no-ansi --no-root
+# Install dev dependencies using cache mount to speed up installation
+RUN --mount=type=cache,target=/tmp/poetry_cache \
+    poetry install --no-interaction --no-ansi --no-root
 
 # -----------------------------
 # Development stage - includes dev dependencies
 # -----------------------------
 FROM dev-dependencies AS development
 
-# Install all dependencies including development
-RUN poetry config virtualenvs.create false
-RUN poetry install --no-interaction --no-ansi
-
-# Copy the rest of the application
+# Copy the application code
 COPY app /app/app
 
 # Default command for development
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
-# # -----------------------------
-# # Test stage - configured for running tests
-# # -----------------------------
+# -----------------------------
+# Test stage - configured for running tests
+# -----------------------------
 FROM development AS test
 
 # Set test environment variables
 ENV PYTHONPATH=/app \
     TESTING=True
 
+
+# Copy tests directory - separate layer from dev stage for better caching
 COPY tests /app/tests
 
 # Default command for running all tests
 CMD ["python", "-m", "pytest"]
 
 # -----------------------------
-# Unit test stage - only runs unit tests
-# -----------------------------
+# Unit test stage - only runs unit tests (same image as test, different command)
+# -
 FROM test AS unit-test
 
 # Command for running only unit tests
-CMD ["python", "-m", "pytest", "-k", '"not integration"', "-v"]
+CMD ["python", "-m", "pytest", "-k", "not integration", "-v"]
 
 # -----------------------------
-# Integration test stage - only runs integration tests
+# Integration test stage - only runs integration tests (same image as test, different command)
 # -----------------------------
 FROM test AS integration-test
 
@@ -105,9 +115,6 @@ CMD ["python", "-m", "pytest", "-m", "integration", "-v"]
 # Production stage - minimal dependencies
 # -----------------------------
 FROM dependencies AS production
-
-# Create directory for models
-RUN mkdir -p /app/models
 
 # Copy application code (excluding tests and dev files)
 COPY app /app/app
