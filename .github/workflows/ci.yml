@@ -162,15 +162,22 @@ jobs:
           echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env-docker
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env-docker
 
-      - name: Build and cache integration test image
+      - name: Build and run integration tests
         uses: docker/build-push-action@v5
         with:
           context: .
-          target: integration-test
+          target: unit-test
           tags: wmgb-backend:integration-test
           load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=local,src=/tmp/.buildx-cache
+            type=gha
+          cache-to: |
+            type=local,dest=/tmp/.buildx-cache-new,mode=max
+            type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            SKIP_POETRY_INSTALL_FOR_LIGHTER_TESTS=true
 
       - name: Run integration tests
         run: |
