@@ -18,6 +18,7 @@ env:
   # Credentials - used primarily at runtime but might be needed during build
   S3_MODELS_BUCKET: ${{ secrets.S3_MODELS_BUCKET || vars.S3_MODELS_BUCKET }}
   AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_REGION: ${{ vars.AWS_REGION }}
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
@@ -164,4 +165,7 @@ jobs:
           echo "Running integration tests..."
           echo "Using S3 bucket: $S3_MODELS_BUCKET"
           echo "Using AWS region: $AWS_REGION"
+          echo "Running integration tests..."
+          echo "Using S3 bucket: ${{env.S3_MODELS_BUCKET}}"
+          echo "Using AWS region: ${{env.AWS_REGION}}"
           docker run --rm --env-file .env-docker wmgb-backend:integration-test
