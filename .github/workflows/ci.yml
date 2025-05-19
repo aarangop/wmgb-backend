@@ -8,24 +8,23 @@ on:
 
 # Define environment variables at the top level
 env:
-  # Configuration variables - used both at build time and runtime
+  # Configure default values for a few necessary environment variables
   MODELS_DIR: ${{ vars.MODELS_DIR || '/app/models' }}
   CAT_DOG_OTHER_CLASSIFIER:
     ${{ vars.CAT_DOG_OTHER_CLASSIFIER || 'cat-dog-other-classifier' }}
   MODEL_SOURCE: ${{ vars.MODEL_SOURCE || 's3' }}
   API_VERSION: ${{ vars.API_VERSION || 'v1' }}
 
-  # Credentials - used primarily at runtime but might be needed during build
-  S3_MODELS_BUCKET: ${{ secrets.S3_MODELS_BUCKET || vars.S3_MODELS_BUCKET }}
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
 jobs:
   # Build and cache dependency stages
   build-deps:
     runs-on: ubuntu-latest
+    env:
+      MODELS_DIR: ${{ vars.MODELS_DIR || '/app/models' }}
+      CAT_DOG_OTHER_CLASSIFIER:
+        ${{ vars.CAT_DOG_OTHER_CLASSIFIER || 'cat-dog-other-classifier' }}
+      MODEL_SOURCE: ${{ vars.MODEL_SOURCE || 's3' }}
+      API_VERSION: ${{ vars.API_VERSION || 'v1' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -68,6 +67,12 @@ jobs:
   unit-tests:
     runs-on: ubuntu-latest
     needs: build-deps
+    env:
+      MODELS_DIR: ${{ vars.MODELS_DIR || '/app/models' }}
+      CAT_DOG_OTHER_CLASSIFIER:
+        ${{ vars.CAT_DOG_OTHER_CLASSIFIER || 'cat-dog-other-classifier' }}
+      MODEL_SOURCE: ${{ vars.MODEL_SOURCE || 's3' }}
+      API_VERSION: ${{ vars.API_VERSION || 'v1' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -127,6 +132,7 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     needs: build-deps
+    environment: CI_CD
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -143,11 +149,11 @@ jobs:
           echo "MODEL_REPOSITORY_TYPE=caching" >> .env-docker
           echo "USE_LOCAL_MODEL_REPO=false" >> .env-docker
           echo "TESTING=false" >> .env-docker
-          echo "S3_MODELS_BUCKET=${{ env.S3_MODELS_BUCKET }}" >> .env-docker
-          echo "AWS_REGION=${{ env.AWS_REGION }}" >> .env-docker
+          echo "S3_MODELS_BUCKET=${{ vars.S3_MODELS_BUCKET }}" >> .env-docker
+          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> .env-docker
           echo "API_VERSION=${{ env.API_VERSION }}" >> .env-docker
-          echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}" >> .env-docker
-          echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}" >> .env-docker
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env-docker
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env-docker
 
       - name: Build and cache integration test image
         uses: docker/build-push-action@v5
@@ -163,9 +169,6 @@ jobs:
         run: |
           # Run the integration tests using docker with environment variables from .env-docker
           echo "Running integration tests..."
-          echo "Using S3 bucket: $S3_MODELS_BUCKET"
-          echo "Using AWS region: $AWS_REGION"
+          echo "Using S3 bucket: ${{vars.S3_MODELS_BUCKET}}"
           echo "Running integration tests..."
-          echo "Using S3 bucket: ${{env.S3_MODELS_BUCKET}}"
-          echo "Using AWS region: ${{env.AWS_REGION}}"
           docker run --rm --env-file .env-docker wmgb-backend:integration-test
