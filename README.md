@@ -1,3 +1,5 @@
+[![CI Pipeline](https://github.com/aarangop/wmgb-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/aarangop/wmgb-backend/actions/workflows/ci.yml)
+
 # Who's My Good Boy - AI Image Classification Service
 
 A FastAPI-based backend service for classifying images using TensorFlow models,
