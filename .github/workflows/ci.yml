@@ -93,9 +93,9 @@ jobs:
       - name: Create Docker environment file
         run: |
           # Create the Docker env file with only required vars for unit tests
-          echo "MODELS_DIR=${{ vars.MODELS_DIR }}" > .env-docker
-          echo "TEST_MODELS_DIR=${{ vars.MODELS_DIR }}/test" >> .env-docker
-          echo "CAT_DOG_OTHER_CLASSIFIER=${{ vars.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
+          echo "MODELS_DIR=${{ env.MODELS_DIR }}" > .env-docker
+          echo "TEST_MODELS_DIR=${{ env.MODELS_DIR }}/test" >> .env-docker
+          echo "CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
           echo "USE_LOCAL_MODEL_REPO=true" >> .env-docker
           echo "TESTING=true" >> .env-docker
 
@@ -133,6 +133,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-deps
     environment: CI_CD
+    env:
+      MODELS_DIR: ${{ vars.MODELS_DIR || '/app/models' }}
+      CAT_DOG_OTHER_CLASSIFIER:
+        ${{ vars.CAT_DOG_OTHER_CLASSIFIER || 'cat-dog-other-classifier' }}
+      MODEL_SOURCE: ${{ vars.MODEL_SOURCE || 's3' }}
+      API_VERSION: ${{ vars.API_VERSION || 'v1' }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -144,12 +151,12 @@ jobs:
       - name: Create Docker environment file
         run: |
           # Create the Docker env file
-          echo "MODELS_DIR=${{ vars.MODELS_DIR }}" > .env-docker
-          echo "CAT_DOG_OTHER_CLASSIFIER=${{ vars.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
+          echo "MODELS_DIR=${{ env.MODELS_DIR }}" > .env-docker
+          echo "CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
           echo "MODEL_REPOSITORY_TYPE=caching" >> .env-docker
           echo "USE_LOCAL_MODEL_REPO=false" >> .env-docker
           echo "TESTING=false" >> .env-docker
-          echo "S3_MODELS_BUCKET=${{ vars.S3_MODELS_BUCKET }}" >> .env-docker
+          echo "S3_MODELS_BUCKET=${{ env.S3_MODELS_BUCKET }}" >> .env-docker
           echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> .env-docker
           echo "API_VERSION=${{ env.API_VERSION }}" >> .env-docker
           echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env-docker
