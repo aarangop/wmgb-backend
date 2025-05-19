@@ -93,9 +93,9 @@ jobs:
       - name: Create Docker environment file
         run: |
           # Create the Docker env file with only required vars for unit tests
-          echo "MODELS_DIR=${{ env.MODELS_DIR }}" > .env-docker
-          echo "TEST_MODELS_DIR=${{ env.MODELS_DIR }}/test" >> .env-docker
-          echo "CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
+          echo "MODELS_DIR=${{ vars.MODELS_DIR }}" > .env-docker
+          echo "TEST_MODELS_DIR=${{ vars.MODELS_DIR }}/test" >> .env-docker
+          echo "CAT_DOG_OTHER_CLASSIFIER=${{ vars.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
           echo "USE_LOCAL_MODEL_REPO=true" >> .env-docker
           echo "TESTING=true" >> .env-docker
 
@@ -144,8 +144,8 @@ jobs:
       - name: Create Docker environment file
         run: |
           # Create the Docker env file
-          echo "MODELS_DIR=${{ env.MODELS_DIR }}" > .env-docker
-          echo "CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
+          echo "MODELS_DIR=${{ vars.MODELS_DIR }}" > .env-docker
+          echo "CAT_DOG_OTHER_CLASSIFIER=${{ vars.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
           echo "MODEL_REPOSITORY_TYPE=caching" >> .env-docker
           echo "USE_LOCAL_MODEL_REPO=false" >> .env-docker
           echo "TESTING=false" >> .env-docker
