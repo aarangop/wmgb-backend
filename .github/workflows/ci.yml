@@ -156,7 +156,7 @@ jobs:
           echo "MODEL_REPOSITORY_TYPE=caching" >> .env-docker
           echo "USE_LOCAL_MODEL_REPO=false" >> .env-docker
           echo "TESTING=false" >> .env-docker
-          echo "S3_MODELS_BUCKET=${{ env.S3_MODELS_BUCKET }}" >> .env-docker
+          echo "S3_MODELS_BUCKET=${{ vars.S3_MODELS_BUCKET }}" >> .env-docker
           echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> .env-docker
           echo "API_VERSION=${{ env.API_VERSION }}" >> .env-docker
           echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env-docker
