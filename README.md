@@ -1,4 +1,5 @@
-[![CI Pipeline](https://github.com/aarangop/wmgb-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/aarangop/wmgb-backend/actions/workflows/ci.yml)
+[![Tests](https://github.com/aarangop/wmgb-backend/actions/workflows/test.yml/badge.svg)](https://github.com/aarangop/wmgb-backend/actions/workflows/test.yml)
+[![Deployment](https://github.com/aarangop/wmgb-backend/actions/workflows/deploy.yml/badge.svg)](https://github.com/aarangop/wmgb-backend/actions/workflows/deploy.yml)
 
 # Who's My Good Boy - AI Image Classification Service
 
