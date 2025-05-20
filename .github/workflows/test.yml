@@ -3,9 +3,9 @@ name: Automated Tests
 on:
   workflow_call:
   push:
-    branches: [main, dev]
+    branches: [dev]
   pull_request:
-    branches: [main, dev]
+    branches: [main]
 
 # Define environment variables at the top level
 env:
