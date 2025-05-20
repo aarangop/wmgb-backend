@@ -10,6 +10,11 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
+# Add top-level permissions for the whole workflow
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   # First check if tests are passing using the existing CI workflow
   verify-tests:
