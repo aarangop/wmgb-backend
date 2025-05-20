@@ -38,7 +38,7 @@ class Config(BaseSettings):
     MODELS_DIR: str = os.getenv("MODELS_DIR", "./models")
     TEST_MODELS_DIR: str = os.getenv("TEST_MODELS_DIR", "./models/test")
     CAT_DOG_OTHER_CLASSIFIER: str = os.getenv(
-        "CAT_DOG_OTHER_CLASSIFIER", "cat_dog_other_classifier.h5")
+        "CAT_DOG_OTHER_CLASSIFIER", "cat-dog-other-classifier")
 
     model_config = ConfigDict(
         extra='allow',
