@@ -9,86 +9,115 @@ on:
 
 # Define environment variables at the top level
 env:
-  # Configure default values for a few necessary environment variables
   MODELS_DIR: ${{ vars.MODELS_DIR || '/app/models' }}
   CAT_DOG_OTHER_CLASSIFIER:
     ${{ vars.CAT_DOG_OTHER_CLASSIFIER || 'cat-dog-other-classifier' }}
-  MODEL_SOURCE: ${{ vars.MODEL_SOURCE || 's3' }}
   API_VERSION: ${{ vars.API_VERSION || 'v1' }}
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Build and cache dependency stages
-  build-deps:
+  # Build and push base image to GHCR
+  build-and-push:
     runs-on: ubuntu-latest
-    env:
-      MODELS_DIR: ${{ vars.MODELS_DIR || '/app/models' }}
-      CAT_DOG_OTHER_CLASSIFIER:
-        ${{ vars.CAT_DOG_OTHER_CLASSIFIER || 'cat-dog-other-classifier' }}
-      MODEL_SOURCE: ${{ vars.MODEL_SOURCE || 's3' }}
-      API_VERSION: ${{ vars.API_VERSION || 'v1' }}
+    # Set permissions needed for GHCR
+    permissions:
+      contents: read
+      packages: write
+
     steps:
+      - name: Check disk space before
+        run: |
+          df -h
+          du -sh /home/runner/* | sort -hr | head -10
+
+      - name: Clean Docker resources
+        run: |
+          docker system prune -af --volumes
+
       - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Cache Docker layers between jobs
-      - name: Cache Docker layers
-        uses: actions/cache@v3
+      # Log in to GitHub Container Registry
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
         with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and cache dependencies
+      # Extract metadata for Docker
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=deps-,format=short
+            type=sha,prefix=test-,format=short
+
+      # Build and push dev-dependencies stage to GHCR
+      - name: Build and push dependencies image
         uses: docker/build-push-action@v5
         with:
           context: .
           target: dev-dependencies
-          tags: wmgb-backend:deps
-          load: true
-          cache-from: |
-            type=local,src=/tmp/.buildx-cache
-            type=gha
-          cache-to: |
-            type=local,dest=/tmp/.buildx-cache-new,mode=max
-            type=gha,mode=max
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:deps-${{ github.sha }}
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
           build-args: |
             BUILDKIT_INLINE_CACHE=1
 
-      # This step is necessary to prevent cache from growing indefinitely
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+      # Build and push unit-test stage to GHCR
+      - name: Build and push unit-test image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: unit-test
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-${{ github.sha }}
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            SKIP_POETRY_INSTALL_FOR_LIGHTER_TESTS=true
 
-  # Run unit tests
+      - name: Check disk space after
+        run: |
+          df -h
+          docker images
+
+  # Run unit tests using the pushed image
   unit-tests:
     runs-on: ubuntu-latest
-    needs: build-deps
-    env:
-      MODELS_DIR: ${{ vars.MODELS_DIR || '/app/models' }}
-      CAT_DOG_OTHER_CLASSIFIER:
-        ${{ vars.CAT_DOG_OTHER_CLASSIFIER || 'cat-dog-other-classifier' }}
-      MODEL_SOURCE: ${{ vars.MODEL_SOURCE || 's3' }}
-      API_VERSION: ${{ vars.API_VERSION || 'v1' }}
+    needs: build-and-push
+    permissions:
+      contents: read
+      packages: read
+
     steps:
+      - name: Check disk space before
+        run: |
+          df -h
+
+      - name: Clean Docker resources
+        run: |
+          docker system prune -af --volumes
+
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # Restore Docker layer cache
-      - name: Cache Docker layers
-        uses: actions/cache@v3
+      # Log in to GitHub Container Registry
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
         with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # Create .env file for Docker to use
       - name: Create Docker environment file
@@ -100,58 +129,55 @@ jobs:
           echo "USE_LOCAL_MODEL_REPO=true" >> .env-docker
           echo "TESTING=true" >> .env-docker
 
-      - name: Build and run unit tests
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          target: unit-test
-          tags: wmgb-backend:unit-test
-          load: true
-          cache-from: |
-            type=local,src=/tmp/.buildx-cache
-            type=gha
-          cache-to: |
-            type=local,dest=/tmp/.buildx-cache-new,mode=max
-            type=gha,mode=max
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
-            SKIP_POETRY_INSTALL_FOR_LIGHTER_TESTS=true
-
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-
       - name: Run unit tests
         run: |
+          # Pull the image from GHCR
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-${{ github.sha }}
+
           # Print Python version and environment variables
-          docker run --rm --env-file .env-docker wmgb-backend:unit-test python -c "import os, sys; print(f'Python {sys.version}'); print('ENV:', dict(os.environ))"
-          # Run the unit tests using docker with environment variables from .env-docker
-          docker run --rm --env-file .env-docker wmgb-backend:unit-test
+          docker run --rm --env-file .env-docker ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-${{ github.sha }} python -c "import os, sys; print(f'Python {sys.version}'); print('ENV:', dict(os.environ))"
+
+          # Run the unit tests
+          docker run --rm --env-file .env-docker ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-${{ github.sha }}
+
+      - name: Check disk space after
+        run: |
+          df -h
+          docker images
 
   # Run integration tests
   integration-tests:
     runs-on: ubuntu-latest
     needs: unit-tests
     environment: CI_CD
-    env:
-      MODELS_DIR: ${{ vars.MODELS_DIR || '/app/models' }}
-      CAT_DOG_OTHER_CLASSIFIER:
-        ${{ vars.CAT_DOG_OTHER_CLASSIFIER || 'cat-dog-other-classifier' }}
-      MODEL_SOURCE: ${{ vars.MODEL_SOURCE || 's3' }}
-      API_VERSION: ${{ vars.API_VERSION || 'v1' }}
+    permissions:
+      contents: read
+      packages: read
 
     steps:
+      - name: Check disk space before
+        run: |
+          df -h
+
+      - name: Clean Docker resources
+        run: |
+          docker system prune -af --volumes
+
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # Log in to GitHub Container Registry
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # Create .env file for Docker to use
       - name: Create Docker environment file
         run: |
-          # Create the Docker env file
+          # Create the Docker env file for integration tests
           echo "MODELS_DIR=${{ env.MODELS_DIR }}" > .env-docker
           echo "CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
           echo "MODEL_REPOSITORY_TYPE=caching" >> .env-docker
@@ -163,25 +189,16 @@ jobs:
           echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env-docker
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env-docker
 
-      - name: Build and run integration tests
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          target: unit-test
-          tags: wmgb-backend:integration-test
-          load: true
-          cache-from: |
-            type=local,src=/tmp/.buildx-cache
-            type=gha
-          cache-to: |
-            type=local,dest=/tmp/.buildx-cache-new,mode=max
-            type=gha,mode=max
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
-            SKIP_POETRY_INSTALL_FOR_LIGHTER_TESTS=true
-
       - name: Run integration tests
         run: |
-          # Run the integration tests using docker with environment variables from .env-docker
+          # Pull the image from GHCR
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-${{ github.sha }}
+
+          # Run the integration tests
           echo "Running integration tests..."
-          docker run --rm --env-file .env-docker wmgb-backend:integration-test
+          docker run --rm --env-file .env-docker ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-${{ github.sha }} python -m pytest -m integration -v
+
+      - name: Check disk space after
+        run: |
+          df -h
+          docker images
