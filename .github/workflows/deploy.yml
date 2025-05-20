@@ -1,11 +1,14 @@
 name: Deploy to ECS
-
 on:
   # Deploy only when pushing to main
   push:
     branches: [main]
   # Allow manual triggering
   workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   # First check if tests are passing using the existing CI workflow
@@ -17,15 +20,22 @@ jobs:
     needs: verify-tests
     runs-on: ubuntu-latest
     environment: CI_CD
-
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      ECR_REPOSITORY: ${{vars.ECR_REPOSITORY}}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
       ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
       ECS_SERVICE: ${{ vars.ECS_SERVICE }}
       CONTAINER_NAME: ${{ vars.CONTAINER_NAME }}
 
     steps:
+      - name: Check disk space before
+        run: |
+          df -h
+
+      - name: Clean Docker resources
+        run: |
+          docker system prune -af --volumes
+
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -43,17 +53,16 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Restore Docker layer cache (reusing from CI workflow)
-      - name: Cache Docker layers
-        uses: actions/cache@v3
+      # Log in to GitHub Container Registry to pull the previously built image
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
         with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build and push the production image to ECR
-      - name: Build and push image to ECR
+      # Build and push the production image to ECR, using GHCR image as cache source
+      - name: Build and push production image to ECR
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -63,17 +72,15 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
             ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
           cache-from: |
-            type=local,src=/tmp/.buildx-cache
             type=gha
-          cache-to: |
-            type=local,dest=/tmp/.buildx-cache-new,mode=max
-            type=gha,mode=max
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:deps-${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-${{ github.sha }}
+          cache-to: type=gha,mode=min
 
-      # Update cache for next workflow
-      - name: Move cache
+      - name: Check disk space after build
         run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          df -h
+          docker images
 
       # Update the ECS service with the new image
       - name: Deploy to Amazon ECS
@@ -86,3 +93,7 @@ jobs:
           echo "Waiting for ECS deployment to complete..."
           aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}
           echo "Deployment completed successfully!"
+
+      - name: Check final disk space
+        run: |
+          df -h
