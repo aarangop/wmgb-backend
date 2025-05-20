@@ -7,8 +7,8 @@ This ensures the latest models are always used in production.
 import os
 import logging
 import boto3
+import boto3.exceptions
 import botocore
-import time
 from pathlib import Path
 
 # Configure logging
@@ -25,10 +25,11 @@ def download_models_from_s3():
     Reads configuration from environment variables.
     """
     # Get configuration from environment variables
-    s3_bucket = os.environ.get("MODEL_S3_BUCKET")
-    s3_prefix = os.environ.get("MODEL_S3_PREFIX", "models/")
+    s3_bucket = os.environ.get("MODEL_S3_BUCKET", "whos-my-good-boy-models")
+    env = os.environ.get("ENV", "development")
+    s3_prefix = os.environ.get("MODEL_S3_PREFIX", env)
     models_dir = os.environ.get("MODELS_DIR", "/app/models")
-    aws_region = os.environ.get("AWS_REGION", "us-east-1")
+    aws_region = os.environ.get("AWS_REGION")
 
     if not s3_bucket:
         logger.warning(
@@ -81,7 +82,7 @@ def download_models_from_s3():
         logger.info("All models downloaded successfully")
         return True
 
-    except botocore.exceptions.ClientError as e:
+    except boto3.exceptions.Boto3Error as e:
         logger.error(f"S3 download error: {e}")
         return False
     except Exception as e:

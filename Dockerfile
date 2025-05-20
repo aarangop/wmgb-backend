@@ -118,19 +118,16 @@ FROM dependencies AS production
 
 # Copy application code (excluding tests and dev files)
 COPY app /app/app
-COPY scripts /app/scripts
+# COPY scripts /app/scripts
 
 # Make entrypoint script executable
-RUN chmod +x /app/scripts/entrypoint.sh
-
-# Install AWS CLI for S3 access
-RUN pip install boto3
+# RUN chmod +x /app/scripts/entrypoint.sh
 
 # Expose the port
 EXPOSE 8000
 
 # Set the entrypoint to download models before starting the app
-ENTRYPOINT ["/app/scripts/entrypoint.sh"]
+# ENTRYPOINT ["/app/scripts/entrypoint.sh"]
 
 # Default command (passed to entrypoint script)
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

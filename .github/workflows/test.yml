@@ -1,6 +1,7 @@
-name: CI Pipeline
+name: Automated Tests
 
 on:
+  workflow_call:
   push:
     branches: [main, dev]
   pull_request:
@@ -131,7 +132,7 @@ jobs:
   # Run integration tests
   integration-tests:
     runs-on: ubuntu-latest
-    needs: build-deps
+    needs: unit-tests
     environment: CI_CD
     env:
       MODELS_DIR: ${{ vars.MODELS_DIR || '/app/models' }}
@@ -182,7 +183,5 @@ jobs:
       - name: Run integration tests
         run: |
           # Run the integration tests using docker with environment variables from .env-docker
-          echo "Running integration tests..."
-          echo "Using S3 bucket: ${{vars.S3_MODELS_BUCKET}}"
           echo "Running integration tests..."
           docker run --rm --env-file .env-docker wmgb-backend:integration-test
