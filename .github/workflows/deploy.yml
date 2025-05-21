@@ -11,6 +11,10 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  MODELS_DIR: ${{ vars.MODELS_DIR || '/app/models' }}
+  CAT_DOG_OTHER_CLASSIFIER:
+    ${{ vars.CAT_DOG_OTHER_CLASSIFIER || 'cat-dog-other-classifier' }}
+  API_VERSION: ${{ vars.API_VERSION || 'v1' }}
 
 # Add top-level permissions for the whole workflow
 permissions:
@@ -21,14 +25,67 @@ jobs:
   # First check if tests are passing using the existing CI workflow
   verify-tests:
     uses: ./.github/workflows/test.yml
-    secrets:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
 
+  # Run integration tests
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: verify-tests
+    environment: CI_CD
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Check disk space before
+        run: |
+          df -h
+
+      - name: Clean Docker resources
+        run: |
+          docker system prune -af --volumes
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Log in to GitHub Container Registry
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Create .env file for Docker to use
+      - name: Create Docker environment file
+        run: |
+          # Create the Docker env file for integration tests
+          echo "MODELS_DIR=${{ env.MODELS_DIR }}" > .env-docker
+          echo "CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
+          echo "MODEL_REPOSITORY_TYPE=caching" >> .env-docker
+          echo "USE_LOCAL_MODEL_REPO=false" >> .env-docker
+          echo "TESTING=false" >> .env-docker
+          echo "S3_MODELS_BUCKET=${{ vars.S3_MODELS_BUCKET }}" >> .env-docker
+          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> .env-docker
+          echo "API_VERSION=${{ env.API_VERSION }}" >> .env-docker
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env-docker
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env-docker
+
+      - name: Run integration tests
+        run: |
+          # Pull the image from GHCR
+          docker pull ${{ needs.verify-tests.outputs.image_tag }}
+
+          # Run the integration tests
+          echo "Running integration tests..."
+          docker run --rm --env-file .env-docker ${{ needs.verify-tests.outputs.image_tag }} python -m pytest -m integration -v
+
+      - name: Check disk space after
+        run: |
+          df -h
+          docker images
   # Deploy to ECR and ECS
   deploy:
-    needs: verify-tests
+    needs: integration-tests
     runs-on: ubuntu-latest
     environment: CI_CD
     env:

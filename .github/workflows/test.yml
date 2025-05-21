@@ -88,6 +88,8 @@ jobs:
         run: |
           df -h
           docker images
+    outputs:
+      image_tag: ${{env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-${{ github.sha }}
 
   # Run unit tests using the pushed image
   unit-tests:
@@ -137,64 +139,6 @@ jobs:
 
           # Run the unit tests
           docker run --rm --env-file .env-docker ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-${{ github.sha }}
-
-      - name: Check disk space after
-        run: |
-          df -h
-          docker images
-
-  # Run integration tests
-  integration-tests:
-    runs-on: ubuntu-latest
-    needs: unit-tests
-    environment: CI_CD
-    permissions:
-      contents: read
-      packages: read
-
-    steps:
-      - name: Check disk space before
-        run: |
-          df -h
-
-      - name: Clean Docker resources
-        run: |
-          docker system prune -af --volumes
-
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      # Log in to GitHub Container Registry
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Create .env file for Docker to use
-      - name: Create Docker environment file
-        run: |
-          # Create the Docker env file for integration tests
-          echo "MODELS_DIR=${{ env.MODELS_DIR }}" > .env-docker
-          echo "CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
-          echo "MODEL_REPOSITORY_TYPE=caching" >> .env-docker
-          echo "USE_LOCAL_MODEL_REPO=false" >> .env-docker
-          echo "TESTING=false" >> .env-docker
-          echo "S3_MODELS_BUCKET=${{ vars.S3_MODELS_BUCKET }}" >> .env-docker
-          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> .env-docker
-          echo "API_VERSION=${{ env.API_VERSION }}" >> .env-docker
-          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env-docker
-          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env-docker
-
-      - name: Run integration tests
-        run: |
-          # Pull the image from GHCR
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-${{ github.sha }}
-
-          # Run the integration tests
-          echo "Running integration tests..."
-          docker run --rm --env-file .env-docker ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-${{ github.sha }} python -m pytest -m integration -v
 
       - name: Check disk space after
         run: |
