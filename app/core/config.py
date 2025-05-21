@@ -25,6 +25,7 @@ class Config(BaseSettings):
     AWS_REGION: str = os.getenv("AWS_REGION", "us-east-2")
     S3_MODELS_BUCKET: str = os.getenv(
         "S3_MODELS_BUCKET", "whos-my-good-boy-models")
+    AWS_PROFILE: str = os.getenv("AWS_PROFILE", "whos-my-good-boy-dev")
 
     # Logging Configuration
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
