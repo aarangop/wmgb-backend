@@ -3,6 +3,8 @@ on:
   # Deploy only when pushing to main
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   # Allow manual triggering
   workflow_dispatch:
 
@@ -19,6 +21,10 @@ jobs:
   # First check if tests are passing using the existing CI workflow
   verify-tests:
     uses: ./.github/workflows/test.yml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
 
   # Deploy to ECR and ECS
   deploy:
@@ -31,6 +37,7 @@ jobs:
       ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
       ECS_SERVICE: ${{ vars.ECS_SERVICE }}
       CONTAINER_NAME: ${{ vars.CONTAINER_NAME }}
+      REGISTRY: ghcr.io
 
     steps:
       - name: Check disk space before
