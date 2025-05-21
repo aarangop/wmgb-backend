@@ -36,6 +36,11 @@ jobs:
       packages: read
 
     steps:
+      # Add this debugging step
+      - name: Debug outputs
+        run: |
+          echo "Image tag output: '${{ needs.verify-tests.outputs.image_tag }}'"
+
       - name: Check disk space before
         run: |
           df -h
@@ -69,10 +74,13 @@ jobs:
           echo "API_VERSION=${{ env.API_VERSION }}" >> .env-docker
           echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env-docker
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env-docker
+          echo "IMAGE"=${{ needs.verify-tests.outputs.env_vars }} >> .env-docker
 
       - name: Run integration tests
         run: |
           # Pull the image from GHCR
+          echo "Pulling the image ${{ needs.verify-tests.outputs.image_tag }} from GHCR..."
+          # Use the image tag from the previous job
           docker pull ${{ needs.verify-tests.outputs.image_tag }}
 
           # Run the integration tests

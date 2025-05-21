@@ -2,6 +2,11 @@ name: Automated Tests
 
 on:
   workflow_call:
+    # Define the outputs for the reusable workflow
+    outputs:
+      image_tag:
+        description: "The docker image tag of the built test image"
+        value: ${{ jobs.build-and-push.outputs.image_tag }}
   push:
     branches: [dev]
 
