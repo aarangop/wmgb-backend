@@ -21,10 +21,11 @@ env:
     ${{ vars.CAT_DOG_OTHER_CLASSIFIER || 'cat-dog-other-classifier' }}
   API_VERSION: ${{ vars.API_VERSION || 'v1' }}
 
-# Set permissions for OIDC authentication
+# Set permissions for OIDC authentication and package access
 permissions:
   id-token: write # Required for requesting the JWT
   contents: read # Required for actions/checkout
+  packages: write # Required for calling test.yml (which needs GHCR access)
 
 jobs:
   # Determine environment based on branch
@@ -137,9 +138,7 @@ jobs:
       needs.test.result == 'success' && 
       (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped')
     environment: ${{ needs.setup.outputs.environment }}
-    permissions:
-      id-token: write
-      contents: read
+    # Permissions inherited from top level
     outputs:
       image_uri: ${{ steps.build-image.outputs.image }}
       deployment_environment: ${{ needs.setup.outputs.environment }}

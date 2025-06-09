@@ -1,4 +1,4 @@
-name: Automated Tests
+name: Test
 
 on:
   workflow_call:
@@ -7,15 +7,17 @@ on:
       image_tag:
         description: "The docker image tag of the built test image"
         value: ${{ jobs.build-and-push.outputs.image_tag }}
-      deps_tag:
-        description: "The docker image tag of the dependencies image"
-        value: ${{ jobs.build-and-push.outputs.deps_tag }}
   push:
-    branches: [dev, main] # Run tests on both dev and main branches
+    branches: [dev, main]
   pull_request:
-    branches: [dev, main] # Run tests on PRs to dev and main
+    branches: [dev, main]
   # Allow manual triggering for testing
   workflow_dispatch:
+
+# Set permissions for both standalone and called workflow runs
+permissions:
+  contents: read
+  packages: write
 
 # Define environment variables at the top level
 env:
@@ -27,13 +29,10 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Build and push base image to GHCR for testing
+  # Build and push test images to GHCR
   build-and-push:
     runs-on: ubuntu-latest
-    # Set permissions needed for GHCR
-    permissions:
-      contents: read
-      packages: write
+    # Permissions inherited from top level
 
     steps:
       - name: Check disk space before
@@ -59,7 +58,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Generate unique but deterministic tags
+      # Generate clean, deterministic tags
       - name: Generate image tags
         id: tags
         run: |
@@ -69,30 +68,15 @@ jobs:
 
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "deps_tag=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:deps-$BRANCH_NAME-$SHORT_SHA" >> $GITHUB_OUTPUT
           echo "test_tag=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test-$BRANCH_NAME-$SHORT_SHA" >> $GITHUB_OUTPUT
 
-          echo "🏷️ Generated tags:"
+          echo "🏷️ Generated tags for testing:"
           echo "  Branch: $BRANCH_NAME"
           echo "  SHA: $SHORT_SHA"
-          echo "  Dependencies: deps-$BRANCH_NAME-$SHORT_SHA"
-          echo "  Test: test-$BRANCH_NAME-$SHORT_SHA"
+          echo "  Test image: test-$BRANCH_NAME-$SHORT_SHA"
 
-      # Build and push dev-dependencies stage to GHCR
-      - name: Build and push dependencies image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          target: dev-dependencies
-          tags: ${{ steps.tags.outputs.deps_tag }}
-          push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=min
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
-
-      # Build and push unit-test stage to GHCR
-      - name: Build and push unit-test image
+      # Build and push unit-test image to GHCR
+      - name: Build and push test image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -103,31 +87,23 @@ jobs:
           cache-to: type=gha,mode=min
           build-args: |
             BUILDKIT_INLINE_CACHE=1
-            SKIP_POETRY_INSTALL_FOR_LIGHTER_TESTS=true
 
       - name: Check disk space after build
         run: |
           df -h
-          docker images | head -10
+          docker images | head -5
 
     outputs:
       image_tag: ${{ steps.tags.outputs.test_tag }}
-      deps_tag: ${{ steps.tags.outputs.deps_tag }}
       branch_name: ${{ steps.tags.outputs.branch_name }}
-      short_sha: ${{ steps.tags.outputs.short_sha }}
 
-  # Run unit tests using the pushed image
+  # Run unit tests
   unit-tests:
     runs-on: ubuntu-latest
     needs: build-and-push
-    permissions:
-      contents: read
-      packages: read
+    # Permissions inherited from top level
 
     steps:
-      - name: Check disk space before
-        run: df -h
-
       - name: Clean Docker resources
         run: docker system prune -af --volumes
 
@@ -142,10 +118,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Create .env file for Docker to use
-      - name: Create Docker environment file
+      # Create environment file for unit tests
+      - name: Create test environment
         run: |
-          # Create the Docker env file with only required vars for unit tests
           echo "MODELS_DIR=${{ env.MODELS_DIR }}" > .env-docker
           echo "TEST_MODELS_DIR=${{ env.MODELS_DIR }}/test" >> .env-docker
           echo "CAT_DOG_OTHER_CLASSIFIER=${{ env.CAT_DOG_OTHER_CLASSIFIER }}" >> .env-docker
@@ -154,61 +129,30 @@ jobs:
 
       - name: Run unit tests
         run: |
-          # Pull the image from GHCR
           echo "🐳 Pulling test image: ${{ needs.build-and-push.outputs.image_tag }}"
           docker pull ${{ needs.build-and-push.outputs.image_tag }}
 
-          # Print Python version and environment variables for debugging
-          echo "🐍 Python environment check:"
-          docker run --rm --env-file .env-docker ${{ needs.build-and-push.outputs.image_tag }} \
-            python -c "import os, sys; print(f'Python {sys.version}'); print('Key ENV vars:', {k:v for k,v in dict(os.environ).items() if k in ['MODELS_DIR', 'TESTING', 'USE_LOCAL_MODEL_REPO']})"
-
-          # Run the unit tests
           echo "🧪 Running unit tests..."
           docker run --rm --env-file .env-docker ${{ needs.build-and-push.outputs.image_tag }}
 
-      - name: Check disk space after tests
+      - name: Unit test results
         run: |
-          df -h
-          docker images | head -5
+          echo "✅ Unit tests completed successfully"
 
-  # Optional: Code quality checks
+  # Code quality checks (placeholder for future expansion)
   code-quality:
     runs-on: ubuntu-latest
     needs: build-and-push
-    permissions:
-      contents: read
-      packages: read
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Log in to GHCR for dependencies image
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Run code quality checks
+      - name: Code quality placeholder
         run: |
-          echo "🔍 Running code quality checks..."
-          # Pull the dependencies image which has all dev tools
-          docker pull ${{ needs.build-and-push.outputs.deps_tag }}
-
-          # Example quality checks (expand as needed):
-          # echo "📋 Checking code formatting..."
-          # docker run --rm -v $(pwd):/app -w /app ${{ needs.build-and-push.outputs.deps_tag }} black --check .
-
-          # echo "🔧 Running linting..."
-          # docker run --rm -v $(pwd):/app -w /app ${{ needs.build-and-push.outputs.deps_tag }} flake8 .
-
-          # echo "🔒 Security scanning..."
-          # docker run --rm -v $(pwd):/app -w /app ${{ needs.build-and-push.outputs.deps_tag }} bandit -r app/
-
-          echo "✅ Code quality checks completed (placeholder - add actual checks as needed)"
+          echo "🔍 Code quality checks would run here"
+          echo "Examples: linting, formatting, security scans, etc."
+          echo "✅ Code quality checks passed (placeholder)"
 
   # Test summary
   test-summary:
@@ -221,12 +165,11 @@ jobs:
         run: |
           echo "## 🧪 Test Results Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch**: ${{ needs.build-and-push.outputs.branch_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit**: ${{ needs.build-and-push.outputs.short_sha }} (${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Test Image**: \`${{ needs.build-and-push.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Dependencies Image**: \`${{ needs.build-and-push.outputs.deps_tag }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Check job results
+          # Check individual job results
           if [[ "${{ needs.unit-tests.result }}" == "success" ]]; then
             echo "✅ **Unit Tests**: Passed" >> $GITHUB_STEP_SUMMARY
           else
@@ -239,22 +182,26 @@ jobs:
             echo "❌ **Code Quality**: Failed" >> $GITHUB_STEP_SUMMARY
           fi
 
-          # Overall status
+          # Overall status and next steps
           if [[ "${{ needs.unit-tests.result }}" == "success" && "${{ needs.code-quality.result }}" == "success" ]]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "🎉 **All tests passed!** Ready for deployment." >> $GITHUB_STEP_SUMMARY
+            echo "🎉 **All tests passed!**" >> $GITHUB_STEP_SUMMARY
             
-            # Branch-specific next steps
+            # Branch-specific guidance
             if [[ "${{ needs.build-and-push.outputs.branch_name }}" == "dev" ]]; then
               echo "" >> $GITHUB_STEP_SUMMARY
-              echo "### 🚀 Next: Development Deployment" >> $GITHUB_STEP_SUMMARY
-              echo "This will trigger automatic deployment to the development environment." >> $GITHUB_STEP_SUMMARY
+              echo "### 🚀 Ready for Development Deployment" >> $GITHUB_STEP_SUMMARY
+              echo "This push will trigger automatic deployment to the development environment." >> $GITHUB_STEP_SUMMARY
             elif [[ "${{ needs.build-and-push.outputs.branch_name }}" == "main" ]]; then
               echo "" >> $GITHUB_STEP_SUMMARY
-              echo "### 🚀 Next: Production Deployment" >> $GITHUB_STEP_SUMMARY
-              echo "This will trigger deployment to production (with approval required)." >> $GITHUB_STEP_SUMMARY
+              echo "### 🚀 Ready for Production Deployment" >> $GITHUB_STEP_SUMMARY
+              echo "This push will trigger deployment to production (approval required)." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### 📋 Pull Request Testing" >> $GITHUB_STEP_SUMMARY
+              echo "Tests passed! Ready for code review and merge." >> $GITHUB_STEP_SUMMARY
             fi
           else
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "⚠️ **Some tests failed.** Please review and fix before deployment." >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Some tests failed.** Please fix issues before deployment." >> $GITHUB_STEP_SUMMARY
           fi
